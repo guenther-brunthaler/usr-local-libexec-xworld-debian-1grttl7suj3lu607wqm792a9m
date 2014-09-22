@@ -1,0 +1,83 @@
+#! /bin/sh
+# Run a patched copy of a diverted script and re-apply the patch to the new
+# version if the diverted script has been upgraded. Will abort if the patch
+# could not be applied or one of the files (diverted original, patch or
+# customized script) could not be found.
+#
+# Version 14.265
+# (c) 2014 by Guenther Brunthaler.
+# This script is free software.
+# Distribution is permitted under the terms of the GPLv3.
+diversion_base=/usr/local/diverted
+customized_subdir=customized
+patches_subdir=patches
+
+set -e
+cleanup() {
+	test -n "$T" && rm -- "$T"
+	echo "Failed!" >& 2
+}
+T=
+trap cleanup 0
+
+me=$0
+case $me in
+	/*) ;;
+	*) me=`pwd`/$me
+esac
+me=`printf %s "$me/" | sed '
+	s,/./,/,g
+	s:/\([^/.][^/]*\|[.][^/.]\|[.][^/]\{2,\}\)/\+../:/:g
+	s,/\+,/,g
+	s,\(.\)/$,\1,
+'`
+test -f "$me"
+token=`printf %s "${me##/}" | tr / _`
+diverted=$diversion_base/$token
+diverted=`readlink -f -- "$diverted"`
+customized=$diversion_base/$customized_subdir/$token
+customized=`readlink -f -- "$customized"`
+test -f "$diverted"
+test -f "$customized"
+test x"$diverted" != x"$customized"
+dt=`stat -c %Y -- "$diverted"`
+ct=`stat -c %Y -- "$customized"`
+if test $dt -ge $ct
+then
+	patch=$diversion_base/$patches_subdir/$token
+	while :
+	do
+		for m in :cat .gz:zcat .xz:xzcat .bz2:bzcat
+		do
+			x={m%%:*}; m=${m#*:}
+			pf=$patch$x
+			test -f "$pf" || continue
+			patch=`readlink -f -- "$pf"`
+			break 2
+		done
+		echo "$me: '$customized' is outdated (needs to be younger" \
+			"than '$diverted') and no patch '$patch*'" \
+			"is present!" >& 2
+		false || exit
+	done
+	test -f "$patch"
+	pt=`stat -c %Y -- "$patch"`
+	if test $ct -ge $pt
+	then
+		echo "$me: Customized '$customized' is younger than its" \
+			"patch '$patch'!" >& 2
+		false || exit
+	fi
+	T=`tempfile`
+	cat "$diverted" > "$T"
+	if $m "$patch" | patch --no-backup-if-mismatch --silent "$T"
+	then
+		cat "$T" > "$customized"
+	else
+		echo "$me: Could not apply patch '$patch' to a copy of " \
+			"'$diverted' in order to regenerate '$customized'!"
+		false || exit
+	fi
+	rm -- "$T"; T=
+fi
+exec "$customized" "$@"
