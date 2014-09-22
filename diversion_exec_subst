@@ -1,0 +1,13 @@
+# Run a patched copy of a diverted script and re-apply the patch to the new
+# version if the diverted script has been upgraded. Will abort if the patch
+# could not be applied or one of the files (diverted original, patch or
+# customized script) could not be found.
+#
+# Version 14.265
+# (c) 2014 by Guenther Brunthaler.
+# This script is free software.
+# Distribution is permitted under the terms of the GPLv3.
+
+exec "`\
+/usr/local/libexec/xworld_debian/get_customized_diversion \"$0\"\
+`" "$@"

@@ -1,10 +1,16 @@
 #! /bin/sh
-# Run a patched copy of a diverted script and re-apply the patch to the new
-# version if the diverted script has been upgraded. Will abort if the patch
-# could not be applied or one of the files (diverted original, patch or
-# customized script) could not be found.
+# Return the absolute path name of a patched copy of a diverted script $1 and
+# re-apply the patch to the new version if the diverted script has been
+# upgraded. Will abort if the patch could not be applied or one of the files
+# (diverted original, patch or customized script) could not be found.
 #
-# Version 14.265
+# $1 should be $0 as passed to a script, or the path name of the shell
+# snippet in case of a snippet intended to be sourced.
+#
+# $1 can be absolute or relative and redundant /./ and /../ components will be
+# removed.
+#
+# Version 14.265.1
 # (c) 2014 by Guenther Brunthaler.
 # This script is free software.
 # Distribution is permitted under the terms of the GPLv3.
@@ -20,7 +26,9 @@ cleanup() {
 T=
 trap cleanup 0
 
-me=$0
+me=$1
+test $# = 1
+test -n "$me"
 case $me in
 	/*) ;;
 	*) me=`pwd`/$me
@@ -42,14 +50,14 @@ test -f "$customized"
 test x"$diverted" != x"$customized"
 dt=`stat -c %Y -- "$diverted"`
 ct=`stat -c %Y -- "$customized"`
-if test $dt -ge $ct
+if test $dt -gt $ct
 then
-	patch=$diversion_base/$patches_subdir/$token
+	patch=$diversion_base/$patches_subdir/$token.patch
 	while :
 	do
 		for m in :cat .gz:zcat .xz:xzcat .bz2:bzcat
 		do
-			x={m%%:*}; m=${m#*:}
+			x=${m%%:*}; m=${m#*:}
 			pf=$patch$x
 			test -f "$pf" || continue
 			patch=`readlink -f -- "$pf"`
@@ -62,9 +70,9 @@ then
 	done
 	test -f "$patch"
 	pt=`stat -c %Y -- "$patch"`
-	if test $ct -ge $pt
+	if test $ct -lt $pt
 	then
-		echo "$me: Customized '$customized' is younger than its" \
+		echo "$me: Customized '$customized' is older than its" \
 			"patch '$patch'!" >& 2
 		false || exit
 	fi
@@ -80,4 +88,4 @@ then
 	fi
 	rm -- "$T"; T=
 fi
-exec "$customized" "$@"
+exec printf "%s\n" "$customized"
