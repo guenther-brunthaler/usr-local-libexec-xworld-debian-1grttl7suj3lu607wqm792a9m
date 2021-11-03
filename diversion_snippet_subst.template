@@ -5,11 +5,11 @@
 # customized script) could not be found.
 #
 # Version 14.265
-# (c) 2014 by Guenther Brunthaler.
+# (c) 2014-2021 by Guenther Brunthaler.
 # This script is free software.
 # Distribution is permitted under the terms of the GPLv3.
 
 . "`\
-/usr/local/libexec/xworld_debian/get_customized_diversion \
+/usr/local/libexec/xworld/debian/get_customized_diversion \
 	\"/abs/path/to/THIS/snippet\"\
 `"

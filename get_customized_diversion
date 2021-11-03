@@ -10,8 +10,9 @@
 # $1 can be absolute or relative and redundant /./ and /../ components will be
 # removed.
 #
-# Version 14.265.1
-# (c) 2014 by Guenther Brunthaler.
+# Version 2021.307
+# (c) 2014-2021 by Guenther Brunthaler.
+#
 # This script is free software.
 # Distribution is permitted under the terms of the GPLv3.
 diversion_base=/usr/local/diverted
@@ -20,11 +21,13 @@ patches_subdir=patches
 
 set -e
 cleanup() {
-	test -n "$T" && rm -- "$T"
-	echo "Failed!" >& 2
+	rc=$?
+	test "$T" && rm -- "$T"
+	test $rc = 0 || echo "\"$0\" failed!" >& 2
 }
 T=
 trap cleanup 0
+trap 'exit $?' INT TERM HUP QUIT
 
 me=$1
 test $# = 1
@@ -76,7 +79,7 @@ then
 			"patch '$patch'!" >& 2
 		false || exit
 	fi
-	T=`tempfile`
+	T=`mktemp -- "${TMPDIR:-/tmp}/${0##*/}.XXXXXXXXXX"`
 	cat "$diverted" > "$T"
 	if $m "$patch" | patch --no-backup-if-mismatch --silent "$T"
 	then
